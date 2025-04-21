@@ -12,9 +12,15 @@ import { AiSupportModule } from './modules/ai-support/ai-support.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TechnicianProfileModule } from './modules/technician-profile/technician-profile.module';
+import { ConfigModule } from '@nestjs/config';
+import { ChatMessageModule } from './modules/chat-message/chat-message.module';
+import { AiSupportMessageModule } from './modules/ai-support-message/ai-support-message.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     PrismaModule,
     AuthModule,
     UserModule,
@@ -26,6 +32,8 @@ import { TechnicianProfileModule } from './modules/technician-profile/technician
     AiSupportModule,
     NotificationModule,
     TechnicianProfileModule,
+    ChatMessageModule,
+    AiSupportMessageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
