@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id         Int      @id @default(autoincrement())
+  auth0_id   String   @unique
+  name       String
+  last_name  String
+  email      String
+  role       UserRole
+  status     Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  technicianProfile technician_profiles?
+  serviceRequests   service_requests[]
+  serviceOffers     service_offers[]
+  reviewsWritten    service_reviews[]    @relation("ReviewsWritten")
+  reviewsReceived   service_reviews[]    @relation("ReviewsReceived")
+  chatMessages      chat_messages[]
+  chatsAsClient     chats[]              @relation("ClientChats")
+  chatsAsTechnician chats[]              @relation("TechnicianChats")
+  aiSupportChats    ai_support_chats[]
+  notifications     notifications[]
+}
+
+model technician_profiles {
+  id               Int      @id @default(autoincrement())
+  user_id          Int      @unique
+  experience       String?
+  years_experience Int?
+  status           Int      @default(0)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id])
+}
+
+model service_requests {
+  id            Int      @id @default(autoincrement())
+  client_id     Int
+  description   String
+  offered_price Float
+  status        Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  client         users             @relation(fields: [client_id], references: [id])
+  serviceOffers  service_offers[]
+  serviceReviews service_reviews[]
+  ticket         service_tickets?
+  chat           chats?
+}
+
+model service_offers {
+  id             Int      @id @default(autoincrement())
+  request_id     Int
+  technician_id  Int
+  message        String?
+  proposed_price Float?
+  status         Int      @default(0)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  request    service_requests @relation(fields: [request_id], references: [id])
+  technician users            @relation(fields: [technician_id], references: [id])
+}
+
+model service_reviews {
+  id            Int      @id @default(autoincrement())
+  request_id    Int
+  reviewer_id   Int
+  technician_id Int
+  comment       String?
+  rating        Int
+  status        Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  request    service_requests @relation(fields: [request_id], references: [id])
+  reviewer   users            @relation("ReviewsWritten", fields: [reviewer_id], references: [id])
+  technician users            @relation("ReviewsReceived", fields: [technician_id], references: [id])
+}
+
+model service_tickets {
+  id         Int       @id @default(autoincrement())
+  request_id Int       @unique
+  status     Int       @default(0)
+  created_at DateTime  @default(now())
+  closed_at  DateTime?
+  updated_at DateTime  @updatedAt
+
+  request service_requests @relation(fields: [request_id], references: [id])
+}
+
+model chats {
+  id            Int      @id @default(autoincrement())
+  request_id    Int      @unique
+  client_id     Int
+  technician_id Int
+  status        Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  request    service_requests @relation(fields: [request_id], references: [id])
+  client     users            @relation("ClientChats", fields: [client_id], references: [id])
+  technician users            @relation("TechnicianChats", fields: [technician_id], references: [id])
+  messages   chat_messages[]
+}
+
+model chat_messages {
+  id         Int      @id @default(autoincrement())
+  chat_id    Int
+  sender_id  Int
+  message    String
+  status     Int      @default(0)
+  sent_at    DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  chat   chats @relation(fields: [chat_id], references: [id])
+  sender users @relation(fields: [sender_id], references: [id])
+}
+
+model ai_support_chats {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  status     Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user     users                 @relation(fields: [user_id], references: [id])
+  messages ai_support_messages[]
+}
+
+model ai_support_messages {
+  id         Int      @id @default(autoincrement())
+  chat_id    Int
+  role       String
+  content    String
+  status     Int      @default(0)
+  sent_at    DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  chat ai_support_chats @relation(fields: [chat_id], references: [id])
+}
+
+model notifications {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  content    String
+  status     Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id])
+}
+
+enum UserRole {
+  client
+  technician
+}
