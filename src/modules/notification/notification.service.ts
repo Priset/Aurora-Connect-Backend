@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
 import { UpdateNotificationDto } from './dto/update-notification.dto';
@@ -7,33 +11,47 @@ import { UpdateNotificationDto } from './dto/update-notification.dto';
 export class NotificationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: CreateNotificationDto) {
+  async create(data: CreateNotificationDto, userId: number) {
     return this.prisma.notifications.create({
       data: {
-        user_id: data.userId,
+        user_id: userId,
         content: data.content,
-        status: data.status ?? 0,
+        status: typeof data.status === 'number' ? data.status : 0,
       },
     });
   }
 
-  findAll() {
+  async findAllForUser(userId: number) {
     return this.prisma.notifications.findMany({
+      where: { user_id: userId },
       include: { user: true },
       orderBy: { created_at: 'desc' },
     });
   }
 
-  findOne(id: number) {
-    return this.prisma.notifications.findUnique({
+  async findOne(id: number, userId: number) {
+    const notif = await this.prisma.notifications.findUnique({
       where: { id },
       include: { user: true },
     });
+
+    if (!notif) throw new NotFoundException('Notification not found');
+    if (notif.user_id !== userId)
+      throw new ForbiddenException('Access denied to this notification');
+
+    return notif;
   }
 
-  async update(id: number, data: UpdateNotificationDto) {
-    const notif = await this.prisma.notifications.findUnique({ where: { id } });
+  async update(id: number, data: UpdateNotificationDto, userId: number) {
+    const notif = await this.prisma.notifications.findUnique({
+      where: { id },
+    });
+
     if (!notif) throw new NotFoundException('Notification not found');
+    if (notif.user_id !== userId)
+      throw new ForbiddenException(
+        'You can only update your own notifications',
+      );
 
     return this.prisma.notifications.update({
       where: { id },
@@ -44,9 +62,16 @@ export class NotificationService {
     });
   }
 
-  async remove(id: number) {
-    const notif = await this.prisma.notifications.findUnique({ where: { id } });
+  async remove(id: number, userId: number) {
+    const notif = await this.prisma.notifications.findUnique({
+      where: { id },
+    });
+
     if (!notif) throw new NotFoundException('Notification not found');
+    if (notif.user_id !== userId)
+      throw new ForbiddenException(
+        'You can only delete your own notifications',
+      );
 
     return this.prisma.notifications.delete({ where: { id } });
   }

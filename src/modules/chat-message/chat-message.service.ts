@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateChatMessageDto } from './dto/create-chat-message.dto';
 import { UpdateChatMessageDto } from './dto/update-chat-message.dto';
@@ -7,19 +11,42 @@ import { UpdateChatMessageDto } from './dto/update-chat-message.dto';
 export class ChatMessageService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: CreateChatMessageDto) {
+  async create(data: CreateChatMessageDto, userId: number) {
+    const chat = await this.prisma.chats.findUnique({
+      where: { id: data.chatId },
+    });
+
+    if (!chat) throw new NotFoundException('Chat not found');
+    const isParticipant =
+      chat.client_id === userId || chat.technician_id === userId;
+
+    if (!isParticipant)
+      throw new ForbiddenException('You are not part of this chat');
+
     return this.prisma.chat_messages.create({
       data: {
         chat_id: data.chatId,
-        sender_id: data.senderId,
+        sender_id: userId,
         message: data.message,
-        status: data.status ?? 0,
+        status: typeof data.status === 'number' ? data.status : 0,
       },
     });
   }
 
-  findAll() {
+  async findAllForChat(chatId: number, userId: number) {
+    const chat = await this.prisma.chats.findUnique({
+      where: { id: chatId },
+    });
+
+    if (!chat) throw new NotFoundException('Chat not found');
+    const isParticipant =
+      chat.client_id === userId || chat.technician_id === userId;
+
+    if (!isParticipant)
+      throw new ForbiddenException('Access denied to chat messages');
+
     return this.prisma.chat_messages.findMany({
+      where: { chat_id: chatId },
       include: {
         chat: true,
         sender: true,
@@ -28,21 +55,32 @@ export class ChatMessageService {
     });
   }
 
-  findOne(id: number) {
-    return this.prisma.chat_messages.findUnique({
+  async findOne(id: number, userId: number) {
+    const message = await this.prisma.chat_messages.findUnique({
       where: { id },
-      include: {
-        chat: true,
-        sender: true,
-      },
+      include: { chat: true, sender: true },
     });
+
+    if (!message) throw new NotFoundException('Message not found');
+    const chat = message.chat;
+
+    const isParticipant =
+      chat.client_id === userId || chat.technician_id === userId;
+
+    if (!isParticipant)
+      throw new ForbiddenException('Access denied to this message');
+
+    return message;
   }
 
-  async update(id: number, data: UpdateChatMessageDto) {
+  async update(id: number, data: UpdateChatMessageDto, userId: number) {
     const message = await this.prisma.chat_messages.findUnique({
       where: { id },
     });
+
     if (!message) throw new NotFoundException('Message not found');
+    if (message.sender_id !== userId)
+      throw new ForbiddenException('You can only edit your own message');
 
     return this.prisma.chat_messages.update({
       where: { id },
@@ -53,11 +91,14 @@ export class ChatMessageService {
     });
   }
 
-  async remove(id: number) {
+  async remove(id: number, userId: number) {
     const message = await this.prisma.chat_messages.findUnique({
       where: { id },
     });
+
     if (!message) throw new NotFoundException('Message not found');
+    if (message.sender_id !== userId)
+      throw new ForbiddenException('You can only delete your own message');
 
     return this.prisma.chat_messages.delete({ where: { id } });
   }

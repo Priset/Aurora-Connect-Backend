@@ -6,37 +6,48 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ServiceRequestService } from './service-request.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
+import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
+import { AuthUserId } from 'src/common/decorators/auth-user-id.decorator';
+import { AuthUserInterceptor } from 'src/common/interceptors/auth-user.interceptor';
 
+@UseGuards(JwtAuthGuard)
+@UseInterceptors(AuthUserInterceptor)
 @Controller('service-requests')
 export class ServiceRequestController {
   constructor(private readonly service: ServiceRequestService) {}
 
   @Post()
-  create(@Body() dto: CreateServiceRequestDto) {
-    return this.service.create(dto);
+  create(@Body() dto: CreateServiceRequestDto, @AuthUserId() userId: number) {
+    return this.service.create(dto, userId);
   }
 
   @Get()
-  findAll() {
-    return this.service.findAll();
+  findAll(@AuthUserId() userId: number) {
+    return this.service.findAllForUser(userId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.service.findOne(+id);
+  findOne(@Param('id') id: string, @AuthUserId() userId: number) {
+    return this.service.findOne(+id, userId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateServiceRequestDto) {
-    return this.service.update(+id, dto);
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateServiceRequestDto,
+    @AuthUserId() userId: number,
+  ) {
+    return this.service.update(+id, dto, userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.service.remove(+id);
+  remove(@Param('id') id: string, @AuthUserId() userId: number) {
+    return this.service.remove(+id, userId);
   }
 }
