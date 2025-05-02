@@ -1,11 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
+interface Auth0Profile {
+  name: string;
+  last_name: string;
+  email: string;
+  role?: 'client' | 'technician';
+}
+
 @Injectable()
 export class AuthService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findOrCreateUserByAuth0Id(auth0Id: string) {
+  async findOrCreateUserByAuth0Id(auth0Id: string, profile: Auth0Profile) {
     let user = await this.prisma.users.findUnique({
       where: { auth0_id: auth0Id },
     });
@@ -14,14 +21,20 @@ export class AuthService {
       user = await this.prisma.users.create({
         data: {
           auth0_id: auth0Id,
-          name: 'New User',
-          last_name: '',
-          email: '',
-          role: 'client',
+          name: profile.name,
+          last_name: profile.last_name,
+          email: profile.email,
+          role: profile.role ?? 'client',
         },
       });
     }
 
     return user;
+  }
+
+  async getUserByAuth0Id(auth0Id: string) {
+    return this.prisma.users.findUnique({
+      where: { auth0_id: auth0Id },
+    });
   }
 }

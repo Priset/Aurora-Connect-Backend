@@ -32,6 +32,12 @@ export class ServiceRequestController {
     return this.service.findAllForUser(userId);
   }
 
+  @Get('all')
+  @UseGuards(JwtAuthGuard)
+  findAllRequestsForTechnicians() {
+    return this.service.findAllForTechnicians();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @AuthUserId() userId: number) {
     return this.service.findOne(+id, userId);

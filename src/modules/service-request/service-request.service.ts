@@ -42,6 +42,22 @@ export class ServiceRequestService {
     return request;
   }
 
+  async findAllForTechnicians() {
+    return this.prisma.service_requests.findMany({
+      include: {
+        client: {
+          select: {
+            name: true,
+            last_name: true,
+          },
+        },
+      },
+      orderBy: {
+        created_at: 'desc',
+      },
+    });
+  }
+
   async update(id: number, data: UpdateServiceRequestDto, userId: number) {
     const request = await this.prisma.service_requests.findUnique({
       where: { id },

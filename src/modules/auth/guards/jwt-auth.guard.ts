@@ -25,7 +25,11 @@ export class JwtAuthGuard implements CanActivate {
         if (err) {
           reject(new UnauthorizedException('Invalid or missing token'));
         } else {
-          resolve(true);
+          if (!req.auth) {
+            reject(new UnauthorizedException('Auth payload missing'));
+          } else {
+            resolve(true);
+          }
         }
       });
     });

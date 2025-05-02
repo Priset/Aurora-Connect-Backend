@@ -34,7 +34,7 @@ model technician_profiles {
   id               Int      @id @default(autoincrement())
   user_id          Int      @unique
   experience       String?
-  years_experience Int?
+  years_experience Int
   status           Int      @default(0)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
