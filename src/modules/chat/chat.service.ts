@@ -7,6 +7,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateChatDto } from './dto/create-chat.dto';
 import { UpdateChatDto } from './dto/update-chat.dto';
+import { Status } from '../../common/enums/status.enum';
 
 @Injectable()
 export class ChatService {
@@ -36,7 +37,7 @@ export class ChatService {
         request_id: request.id,
         client_id: request.client_id,
         technician_id: offer.technician_id,
-        status: 0,
+        status: Status.CHAT_ACTIVO,
       },
     });
   }
@@ -44,7 +45,14 @@ export class ChatService {
   async findAllForUser(userId: number) {
     return this.prisma.chats.findMany({
       where: {
-        OR: [{ client_id: userId }, { technician_id: userId }],
+        AND: [
+          {
+            OR: [{ client_id: userId }, { technician_id: userId }],
+          },
+          {
+            NOT: { status: Status.ELIMINADO },
+          },
+        ],
       },
       include: {
         request: true,
@@ -64,7 +72,8 @@ export class ChatService {
       },
     });
 
-    if (!chat) throw new NotFoundException('Chat not found');
+    if (!chat || (chat.status as Status) === Status.ELIMINADO)
+      throw new NotFoundException('Chat not found');
     if (chat.client_id !== userId && chat.technician_id !== userId)
       throw new ForbiddenException('Access denied to this chat');
 
@@ -87,10 +96,16 @@ export class ChatService {
 
   async remove(id: number, userId: number) {
     const chat = await this.prisma.chats.findUnique({ where: { id } });
-    if (!chat) throw new NotFoundException('Chat not found');
+
+    if (!chat || (chat.status as Status) === Status.ELIMINADO)
+      throw new NotFoundException('Chat not found');
+
     if (chat.client_id !== userId && chat.technician_id !== userId)
       throw new ForbiddenException('You can only delete your own chat');
 
-    return this.prisma.chats.delete({ where: { id } });
+    return this.prisma.chats.update({
+      where: { id },
+      data: { status: Status.ELIMINADO },
+    });
   }
 }

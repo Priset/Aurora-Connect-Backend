@@ -27,6 +27,11 @@ export class TicketController {
     return this.service.create(dto, userId);
   }
 
+  @Post('/from-request/:requestId')
+  createFromRequest(@Param('requestId') requestId: string) {
+    return this.service.createFromRequest(+requestId);
+  }
+
   @Get()
   findAll(@AuthUserId() userId: number) {
     return this.service.findAllForUser(userId);

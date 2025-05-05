@@ -8,6 +8,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
+import { Status } from '../../common/enums/status.enum';
 
 @Injectable()
 export class ReviewService {
@@ -54,6 +55,9 @@ export class ReviewService {
 
   async findAll() {
     return this.prisma.service_reviews.findMany({
+      where: {
+        NOT: { status: Status.ELIMINADO },
+      },
       include: {
         request: true,
         reviewer: true,
@@ -72,7 +76,8 @@ export class ReviewService {
       },
     });
 
-    if (!review) throw new NotFoundException('Review not found');
+    if (!review || (review.status as Status) === Status.ELIMINADO)
+      throw new NotFoundException('Review not found');
     if (review.reviewer_id !== userId)
       throw new ForbiddenException('Access denied to this review');
 
@@ -103,10 +108,15 @@ export class ReviewService {
       where: { id },
     });
 
-    if (!review) throw new NotFoundException('Review not found');
+    if (!review || (review.status as Status) === Status.ELIMINADO)
+      throw new NotFoundException('Review not found');
+
     if (review.reviewer_id !== userId)
       throw new ForbiddenException('You can only delete your own review');
 
-    return this.prisma.service_reviews.delete({ where: { id } });
+    return this.prisma.service_reviews.update({
+      where: { id },
+      data: { status: Status.ELIMINADO },
+    });
   }
 }

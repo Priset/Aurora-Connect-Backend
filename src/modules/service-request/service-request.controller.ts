@@ -15,6 +15,7 @@ import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { AuthUserId } from 'src/common/decorators/auth-user-id.decorator';
 import { AuthUserInterceptor } from 'src/common/interceptors/auth-user.interceptor';
+import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
 
 @UseGuards(JwtAuthGuard)
 @UseInterceptors(AuthUserInterceptor)
@@ -50,6 +51,15 @@ export class ServiceRequestController {
     @AuthUserId() userId: number,
   ) {
     return this.service.update(+id, dto, userId);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateRequestStatusDto,
+    @AuthUserId() userId: number,
+  ) {
+    return this.service.updateStatus(+id, dto.status, userId);
   }
 
   @Delete(':id')

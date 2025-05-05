@@ -7,6 +7,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
+import { Status } from '../../common/enums/status.enum';
 
 @Injectable()
 export class TicketService {
@@ -32,16 +33,24 @@ export class TicketService {
     });
   }
 
+  async createFromRequest(requestId: number) {
+    return this.prisma.service_tickets.create({
+      data: {
+        request_id: requestId,
+        status: Status.PENDIENTE,
+      },
+    });
+  }
+
   async findAllForUser(userId: number) {
     return this.prisma.service_tickets.findMany({
       where: {
+        status: { not: Status.ELIMINADO },
         request: {
           client_id: userId,
         },
       },
-      include: {
-        request: true,
-      },
+      include: { request: true },
     });
   }
 
@@ -51,7 +60,13 @@ export class TicketService {
       include: { request: true },
     });
 
-    if (!ticket) throw new NotFoundException('Ticket not found');
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    if ((ticket.status as Status) === Status.ELIMINADO) {
+      throw new NotFoundException('Ticket not found');
+    }
     if (ticket.request.client_id !== userId)
       throw new ForbiddenException('Access denied to this ticket');
 
@@ -67,8 +82,6 @@ export class TicketService {
     if (!ticket) throw new NotFoundException('Ticket not found');
     if (ticket.request.client_id !== userId)
       throw new ForbiddenException('Access denied to update this ticket');
-
-    // Validación extra (opcional)
     if (data.status === 2 && !data.closedAt) {
       throw new BadRequestException(
         'Must provide closedAt when closing the ticket',
@@ -90,12 +103,20 @@ export class TicketService {
       include: { request: true },
     });
 
-    if (!ticket) throw new NotFoundException('Ticket not found');
+    if (!ticket) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    if ((ticket.status as Status) === Status.ELIMINADO) {
+      throw new NotFoundException('Ticket not found');
+    }
+
     if (ticket.request.client_id !== userId)
       throw new ForbiddenException('Access denied to delete this ticket');
 
-    return this.prisma.service_tickets.delete({
+    return this.prisma.service_tickets.update({
       where: { id },
+      data: { status: Status.ELIMINADO },
     });
   }
 }

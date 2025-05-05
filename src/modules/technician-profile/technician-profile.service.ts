@@ -7,6 +7,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTechnicianProfileDto } from './dto/create-technician-profile.dto';
 import { UpdateTechnicianProfileDto } from './dto/update-technician-profile.dto';
+import { Status } from '../../common/enums/status.enum';
 
 @Injectable()
 export class TechnicianProfileService {
@@ -33,6 +34,9 @@ export class TechnicianProfileService {
 
   async findAll() {
     return this.prisma.technician_profiles.findMany({
+      where: {
+        NOT: { status: Status.ELIMINADO },
+      },
       include: { user: true },
     });
   }
@@ -43,7 +47,8 @@ export class TechnicianProfileService {
       include: { user: true },
     });
 
-    if (!profile) throw new NotFoundException('Technician profile not found');
+    if (!profile || (profile.status as Status) === Status.ELIMINADO)
+      throw new NotFoundException('Technician profile not found');
     if (profile.user_id !== userId)
       throw new ForbiddenException('Access denied');
 
@@ -74,10 +79,15 @@ export class TechnicianProfileService {
       where: { id },
     });
 
-    if (!profile) throw new NotFoundException('Technician profile not found');
+    if (!profile || (profile.status as Status) === Status.ELIMINADO)
+      throw new NotFoundException('Technician profile not found');
+
     if (profile.user_id !== userId)
       throw new ForbiddenException('You can only delete your own profile');
 
-    return this.prisma.technician_profiles.delete({ where: { id } });
+    return this.prisma.technician_profiles.update({
+      where: { id },
+      data: { status: Status.ELIMINADO },
+    });
   }
 }

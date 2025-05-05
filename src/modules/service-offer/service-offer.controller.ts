@@ -15,6 +15,7 @@ import { UpdateServiceOfferDto } from './dto/update-service-offer.dto';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { AuthUserId } from 'src/common/decorators/auth-user-id.decorator';
 import { AuthUserInterceptor } from 'src/common/interceptors/auth-user.interceptor';
+import { UpdateRequestStatusDto } from '../service-request/dto/update-request-status.dto';
 
 @UseGuards(JwtAuthGuard)
 @UseInterceptors(AuthUserInterceptor)
@@ -35,6 +36,15 @@ export class ServiceOfferController {
   @Get(':id')
   findOne(@Param('id') id: string, @AuthUserId() userId: number) {
     return this.service.findOne(+id, userId);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateRequestStatusDto,
+    @AuthUserId() userId: number,
+  ) {
+    return this.service.updateStatus(+id, dto.status, userId);
   }
 
   @Patch(':id')

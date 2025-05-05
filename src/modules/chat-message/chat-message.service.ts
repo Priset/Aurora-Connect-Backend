@@ -6,6 +6,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateChatMessageDto } from './dto/create-chat-message.dto';
 import { UpdateChatMessageDto } from './dto/update-chat-message.dto';
+import { Status } from '../../common/enums/status.enum';
 
 @Injectable()
 export class ChatMessageService {
@@ -28,7 +29,8 @@ export class ChatMessageService {
         chat_id: data.chatId,
         sender_id: userId,
         message: data.message,
-        status: typeof data.status === 'number' ? data.status : 0,
+        status:
+          typeof data.status === 'number' ? data.status : Status.HABILITADO,
       },
     });
   }
@@ -46,7 +48,10 @@ export class ChatMessageService {
       throw new ForbiddenException('Access denied to chat messages');
 
     return this.prisma.chat_messages.findMany({
-      where: { chat_id: chatId },
+      where: {
+        chat_id: chatId,
+        NOT: { status: Status.ELIMINADO },
+      },
       include: {
         chat: true,
         sender: true,
@@ -61,7 +66,8 @@ export class ChatMessageService {
       include: { chat: true, sender: true },
     });
 
-    if (!message) throw new NotFoundException('Message not found');
+    if (!message || (message.status as Status) === Status.ELIMINADO)
+      throw new NotFoundException('Message not found');
     const chat = message.chat;
 
     const isParticipant =
@@ -100,6 +106,9 @@ export class ChatMessageService {
     if (message.sender_id !== userId)
       throw new ForbiddenException('You can only delete your own message');
 
-    return this.prisma.chat_messages.delete({ where: { id } });
+    return this.prisma.chat_messages.update({
+      where: { id },
+      data: { status: Status.ELIMINADO },
+    });
   }
 }

@@ -6,25 +6,37 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
+import { Status } from 'src/common/enums/status.enum';
 
 @Injectable()
 export class ServiceRequestService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(data: CreateServiceRequestDto, userId: number) {
-    return this.prisma.service_requests.create({
+    const request = await this.prisma.service_requests.create({
       data: {
         client_id: userId,
         description: data.description,
         offered_price: data.offeredPrice,
-        status: data.status ?? 0,
+        status: data.status ?? Status.PENDIENTE,
       },
     });
+    await this.prisma.service_tickets.create({
+      data: {
+        request_id: request.id,
+        status: Status.PENDIENTE,
+      },
+    });
+
+    return request;
   }
 
   async findAllForUser(userId: number) {
     return this.prisma.service_requests.findMany({
-      where: { client_id: userId },
+      where: {
+        client_id: userId,
+        NOT: { status: Status.ELIMINADO },
+      },
       include: { client: true },
     });
   }
@@ -44,6 +56,9 @@ export class ServiceRequestService {
 
   async findAllForTechnicians() {
     return this.prisma.service_requests.findMany({
+      where: {
+        NOT: { status: Status.ELIMINADO },
+      },
       include: {
         client: {
           select: {
@@ -77,6 +92,87 @@ export class ServiceRequestService {
     });
   }
 
+  async updateStatus(id: number, status: Status, userId: number) {
+    const request = await this.prisma.service_requests.findUnique({
+      where: { id },
+      include: { serviceOffers: true, chat: true },
+    });
+
+    if (!request) throw new NotFoundException('Service request not found');
+
+    // Guardar el nuevo estado
+    const updatedRequest = await this.prisma.service_requests.update({
+      where: { id },
+      data: { status },
+    });
+
+    const isClient = request.client_id === userId;
+    const offer = request.serviceOffers.find(
+      (o) =>
+        o.technician_id === userId ||
+        (isClient && (o.status as Status) === Status.ACEPTADO_POR_TECNICO),
+    );
+
+    const technicianId = offer?.technician_id;
+
+    // 1. El técnico acepta la solicitud (sin contraoferta)
+    if (status === Status.ACEPTADO_POR_TECNICO && !offer) {
+      await this.prisma.service_offers.create({
+        data: {
+          request_id: id,
+          technician_id: userId,
+          proposed_price: request.offered_price,
+          status: Status.ACEPTADO_POR_TECNICO,
+        },
+      });
+    }
+
+    // 2. El cliente acepta una oferta ya aceptada por el técnico
+    if (status === Status.ACEPTADO_POR_CLIENTE && offer && technicianId) {
+      await this.prisma.service_offers.updateMany({
+        where: {
+          request_id: id,
+          technician_id: technicianId,
+          status: Status.ACEPTADO_POR_TECNICO,
+        },
+        data: {
+          status: Status.ACEPTADO_POR_CLIENTE,
+        },
+      });
+    }
+
+    // 3. Si ambas partes aceptaron, se crea el chat
+    const isAcceptedByClient = status === Status.ACEPTADO_POR_CLIENTE;
+    const isAcceptedByTechnician =
+      offer?.status === Status.ACEPTADO_POR_TECNICO ||
+      offer?.status === Status.ACEPTADO_POR_CLIENTE;
+
+    const shouldCreateChat =
+      isAcceptedByClient &&
+      isAcceptedByTechnician &&
+      !request.chat &&
+      technicianId;
+
+    if (shouldCreateChat) {
+      await this.prisma.chats.create({
+        data: {
+          request_id: id,
+          client_id: request.client_id,
+          technician_id: technicianId,
+          status: Status.CHAT_ACTIVO,
+        },
+      });
+
+      // Actualizar estado general del request
+      await this.prisma.service_requests.update({
+        where: { id },
+        data: { status: Status.CHAT_ACTIVO },
+      });
+    }
+
+    return updatedRequest;
+  }
+
   async remove(id: number, userId: number) {
     const request = await this.prisma.service_requests.findUnique({
       where: { id },
@@ -86,6 +182,9 @@ export class ServiceRequestService {
     if (request.client_id !== userId)
       throw new ForbiddenException('You can only delete your own request');
 
-    return this.prisma.service_requests.delete({ where: { id } });
+    return this.prisma.service_requests.update({
+      where: { id },
+      data: { status: Status.ELIMINADO },
+    });
   }
 }
