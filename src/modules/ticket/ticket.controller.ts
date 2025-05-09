@@ -15,6 +15,7 @@ import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthUserInterceptor } from '../../common/interceptors/auth-user.interceptor';
 import { AuthUserId } from '../../common/decorators/auth-user-id.decorator';
+import { Status } from '../../common/enums/status.enum';
 
 @UseGuards(JwtAuthGuard)
 @UseInterceptors(AuthUserInterceptor)
@@ -40,6 +41,15 @@ export class TicketController {
   @Get(':id')
   findOne(@Param('id') id: string, @AuthUserId() userId: number) {
     return this.service.findOne(+id, userId);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id') id: string,
+    @Body('status') status: Status,
+    @AuthUserId() userId: number,
+  ) {
+    return this.service.updateStatus(+id, status, userId);
   }
 
   @Patch(':id')

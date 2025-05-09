@@ -5,12 +5,6 @@ export class CreateChatDto {
   requestId: number;
 
   @IsInt()
-  clientId: number;
-
-  @IsInt()
-  technicianId: number;
-
-  @IsInt()
   @IsOptional()
   status?: number;
 }

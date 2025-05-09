@@ -7,10 +7,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateServiceRequestDto } from './dto/create-service-request.dto';
 import { UpdateServiceRequestDto } from './dto/update-service-request.dto';
 import { Status } from 'src/common/enums/status.enum';
+import { ServiceRequestGateway } from './service-request.gateway';
 
 @Injectable()
 export class ServiceRequestService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: ServiceRequestGateway,
+  ) {}
 
   async create(data: CreateServiceRequestDto, userId: number) {
     const request = await this.prisma.service_requests.create({
@@ -20,6 +24,7 @@ export class ServiceRequestService {
         offered_price: data.offeredPrice,
         status: data.status ?? Status.PENDIENTE,
       },
+      include: { client: true },
     });
     await this.prisma.service_tickets.create({
       data: {
@@ -27,6 +32,7 @@ export class ServiceRequestService {
         status: Status.PENDIENTE,
       },
     });
+    this.gateway.emitNewServiceRequest(request);
 
     return request;
   }
@@ -37,7 +43,7 @@ export class ServiceRequestService {
         client_id: userId,
         NOT: { status: Status.ELIMINADO },
       },
-      include: { client: true },
+      include: { client: true, serviceOffers: true },
     });
   }
 
@@ -106,6 +112,14 @@ export class ServiceRequestService {
       data: { status },
     });
 
+    await this.prisma.service_tickets.updateMany({
+      where: {
+        request_id: id,
+        NOT: { status: Status.ELIMINADO },
+      },
+      data: { status },
+    });
+
     const isClient = request.client_id === userId;
     const offer = request.serviceOffers.find(
       (o) =>
@@ -141,6 +155,34 @@ export class ServiceRequestService {
       });
     }
 
+    // 2b. El cliente acepta una contraoferta previa del técnico
+    if (
+      status === Status.ACEPTADO_POR_CLIENTE &&
+      offer?.status === Status.CONTRAOFERTA_POR_TECNICO
+    ) {
+      await this.prisma.service_offers.update({
+        where: { id: offer.id },
+        data: { status: Status.ACEPTADO_POR_CLIENTE },
+      });
+
+      // Crear el chat y actualizar estado si aún no existe
+      if (!request.chat && offer.technician_id) {
+        await this.prisma.chats.create({
+          data: {
+            request_id: id,
+            client_id: request.client_id,
+            technician_id: offer.technician_id,
+            status: Status.CHAT_ACTIVO,
+          },
+        });
+
+        await this.prisma.service_requests.update({
+          where: { id },
+          data: { status: Status.CHAT_ACTIVO },
+        });
+      }
+    }
+
     // 3. Si ambas partes aceptaron, se crea el chat
     const isAcceptedByClient = status === Status.ACEPTADO_POR_CLIENTE;
     const isAcceptedByTechnician =
@@ -169,6 +211,8 @@ export class ServiceRequestService {
         data: { status: Status.CHAT_ACTIVO },
       });
     }
+
+    this.gateway.emitRequestUpdated(updatedRequest);
 
     return updatedRequest;
   }

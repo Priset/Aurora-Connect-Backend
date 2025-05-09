@@ -8,16 +8,28 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateServiceOfferDto } from './dto/create-service-offer.dto';
 import { UpdateServiceOfferDto } from './dto/update-service-offer.dto';
 import { Status } from '../../common/enums/status.enum';
+import { ServiceOfferGateway } from './service-offer.gateway';
 
 @Injectable()
 export class ServiceOfferService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: ServiceOfferGateway,
+  ) {}
 
-  async create(data: CreateServiceOfferDto, technicianId: number) {
+  async create(data: CreateServiceOfferDto, userId: number) {
+    const technicianProfile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!technicianProfile) {
+      throw new NotFoundException('Technician profile not found');
+    }
+
     const existing = await this.prisma.service_offers.findFirst({
       where: {
         request_id: data.requestId,
-        technician_id: technicianId,
+        technician_id: technicianProfile.id,
       },
     });
 
@@ -25,53 +37,93 @@ export class ServiceOfferService {
       throw new ConflictException('You have already offered for this request');
     }
 
-    return this.prisma.service_offers.create({
+    const offer = await this.prisma.service_offers.create({
       data: {
         request_id: data.requestId,
-        technician_id: technicianId,
+        technician_id: technicianProfile.id,
         message: data.message,
         proposed_price: data.proposedPrice,
         status: 0,
       },
+      include: {
+        technician: { include: { user: true } },
+        request: true,
+      },
     });
+
+    this.gateway.emitOfferCreated(offer);
+    return offer;
   }
 
-  async findAllForTechnician(technicianId: number) {
+  async findAllForTechnician(userId: number) {
+    const profile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Technician profile not found');
+    }
+
     return this.prisma.service_offers.findMany({
       where: {
-        technician_id: technicianId,
+        technician_id: profile.id,
         NOT: { status: Status.ELIMINADO },
       },
       include: {
         request: true,
-        technician: true,
+        technician: { include: { user: true } },
       },
     });
   }
 
-  async findOne(id: number, technicianId: number) {
-    const offer = await this.prisma.service_offers.findUnique({
-      where: { id },
-      include: { request: true, technician: true },
+  async findOne(id: number, userId: number) {
+    const profile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
     });
 
-    if (!offer || (offer.status as Status) === Status.ELIMINADO)
-      throw new NotFoundException('Service offer not found');
+    if (!profile) {
+      throw new NotFoundException('Technician profile not found');
+    }
 
-    if (offer.technician_id !== technicianId)
+    const offer = await this.prisma.service_offers.findUnique({
+      where: { id },
+      include: {
+        request: true,
+        technician: { include: { user: true } },
+      },
+    });
+
+    if (!offer || (offer.status as Status) === Status.ELIMINADO) {
+      throw new NotFoundException('Service offer not found');
+    }
+
+    if (offer.technician_id !== profile.id) {
       throw new ForbiddenException('Access denied to this offer');
+    }
 
     return offer;
   }
 
-  async update(id: number, data: UpdateServiceOfferDto, technicianId: number) {
+  async update(id: number, data: UpdateServiceOfferDto, userId: number) {
+    const profile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Technician profile not found');
+    }
+
     const offer = await this.prisma.service_offers.findUnique({
       where: { id },
     });
 
-    if (!offer) throw new NotFoundException('Service offer not found');
-    if (offer.technician_id !== technicianId)
+    if (!offer) {
+      throw new NotFoundException('Service offer not found');
+    }
+
+    if (offer.technician_id !== profile.id) {
       throw new ForbiddenException('Access denied to update this offer');
+    }
 
     return this.prisma.service_offers.update({
       where: { id },
@@ -84,32 +136,59 @@ export class ServiceOfferService {
   }
 
   async updateStatus(id: number, status: Status, userId: number) {
+    const profile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Technician profile not found');
+    }
+
     const offer = await this.prisma.service_offers.findUnique({
       where: { id },
     });
 
-    if (!offer || (offer.status as Status) === Status.ELIMINADO)
+    if (!offer || (offer.status as Status) === Status.ELIMINADO) {
       throw new NotFoundException('Offer not found');
+    }
 
-    if (offer.technician_id !== userId)
+    if (offer.technician_id !== profile.id) {
       throw new ForbiddenException('Access denied');
+    }
 
-    return this.prisma.service_offers.update({
+    const updated = await this.prisma.service_offers.update({
       where: { id },
       data: { status },
+      include: {
+        technician: { include: { user: true } },
+        request: true,
+      },
     });
+
+    this.gateway.emitOfferUpdated(updated);
+    return updated;
   }
 
-  async remove(id: number, technicianId: number) {
+  async remove(id: number, userId: number) {
+    const profile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Technician profile not found');
+    }
+
     const offer = await this.prisma.service_offers.findUnique({
       where: { id },
     });
 
-    if (!offer || (offer.status as Status) === Status.ELIMINADO)
+    if (!offer || (offer.status as Status) === Status.ELIMINADO) {
       throw new NotFoundException('Service offer not found');
+    }
 
-    if (offer.technician_id !== technicianId)
+    if (offer.technician_id !== profile.id) {
       throw new ForbiddenException('Access denied to delete this offer');
+    }
 
     return this.prisma.service_offers.update({
       where: { id },

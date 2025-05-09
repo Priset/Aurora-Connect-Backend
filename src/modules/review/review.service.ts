@@ -17,11 +17,19 @@ export class ReviewService {
   async create(data: CreateReviewDto, userId: number) {
     const request = await this.prisma.service_requests.findUnique({
       where: { id: data.requestId },
+      include: {
+        chat: {
+          include: {
+            technician: true,
+          },
+        },
+      },
     });
 
     if (!request) throw new NotFoundException('Service request not found');
     if (request.client_id !== userId)
       throw new ForbiddenException('You can only review your own requests');
+
     const ticket = await this.prisma.service_tickets.findUnique({
       where: { request_id: data.requestId },
     });
@@ -30,6 +38,7 @@ export class ReviewService {
       throw new BadRequestException(
         'You can only review after the service is completed',
       );
+
     const existingReview = await this.prisma.service_reviews.findFirst({
       where: {
         request_id: data.requestId,
@@ -37,15 +46,19 @@ export class ReviewService {
       },
     });
 
-    if (existingReview) {
+    if (existingReview)
       throw new ConflictException('You already reviewed this request');
+
+    const technicianId = request.chat?.technician_id;
+    if (!technicianId) {
+      throw new NotFoundException('No technician assigned to this request');
     }
 
     return this.prisma.service_reviews.create({
       data: {
         request_id: data.requestId,
         reviewer_id: userId,
-        technician_id: data.technicianId,
+        technician_id: technicianId,
         comment: data.comment,
         rating: data.rating,
         status: data.status ?? 0,
@@ -61,7 +74,9 @@ export class ReviewService {
       include: {
         request: true,
         reviewer: true,
-        technician: true,
+        technician: {
+          include: { user: true },
+        },
       },
     });
   }
@@ -72,7 +87,9 @@ export class ReviewService {
       include: {
         request: true,
         reviewer: true,
-        technician: true,
+        technician: {
+          include: { user: true },
+        },
       },
     });
 

@@ -97,6 +97,30 @@ export class TicketService {
     });
   }
 
+  async updateStatus(id: number, status: Status, userId: number) {
+    const ticket = await this.prisma.service_tickets.findUnique({
+      where: { id },
+      include: { request: true },
+    });
+
+    if (!ticket) throw new NotFoundException('Ticket not found');
+
+    if ((ticket.status as Status) === Status.ELIMINADO) {
+      throw new NotFoundException('Ticket not found');
+    }
+
+    if (ticket.request.client_id !== userId)
+      throw new ForbiddenException('Access denied to update this ticket');
+
+    const updated = await this.prisma.service_tickets.update({
+      where: { id },
+      data: { status },
+      include: { request: true },
+    });
+
+    return updated;
+  }
+
   async remove(id: number, userId: number) {
     const ticket = await this.prisma.service_tickets.findUnique({
       where: { id },
