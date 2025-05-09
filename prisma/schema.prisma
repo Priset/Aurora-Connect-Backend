@@ -20,12 +20,9 @@ model users {
 
   technicianProfile technician_profiles?
   serviceRequests   service_requests[]
-  serviceOffers     service_offers[]
   reviewsWritten    service_reviews[]    @relation("ReviewsWritten")
-  reviewsReceived   service_reviews[]    @relation("ReviewsReceived")
   chatMessages      chat_messages[]
   chatsAsClient     chats[]              @relation("ClientChats")
-  chatsAsTechnician chats[]              @relation("TechnicianChats")
   aiSupportChats    ai_support_chats[]
   notifications     notifications[]
 }
@@ -34,12 +31,15 @@ model technician_profiles {
   id               Int      @id @default(autoincrement())
   user_id          Int      @unique
   experience       String?
-  years_experience Int?
+  years_experience Int
   status           Int      @default(0)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
-  user users @relation(fields: [user_id], references: [id])
+  user            users             @relation(fields: [user_id], references: [id])
+  service_offers  service_offers[]  @relation("TechnicianOffers")
+  service_reviews service_reviews[] @relation("ReviewsReceived")
+  chats           chats[]           @relation("TechnicianChats")
 }
 
 model service_requests {
@@ -68,8 +68,8 @@ model service_offers {
   created_at     DateTime @default(now())
   updated_at     DateTime @updatedAt
 
-  request    service_requests @relation(fields: [request_id], references: [id])
-  technician users            @relation(fields: [technician_id], references: [id])
+  request    service_requests    @relation(fields: [request_id], references: [id])
+  technician technician_profiles @relation("TechnicianOffers", fields: [technician_id], references: [id])
 }
 
 model service_reviews {
@@ -83,9 +83,9 @@ model service_reviews {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  request    service_requests @relation(fields: [request_id], references: [id])
-  reviewer   users            @relation("ReviewsWritten", fields: [reviewer_id], references: [id])
-  technician users            @relation("ReviewsReceived", fields: [technician_id], references: [id])
+  request    service_requests    @relation(fields: [request_id], references: [id])
+  reviewer   users               @relation("ReviewsWritten", fields: [reviewer_id], references: [id])
+  technician technician_profiles @relation("ReviewsReceived", fields: [technician_id], references: [id])
 }
 
 model service_tickets {
@@ -108,9 +108,9 @@ model chats {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  request    service_requests @relation(fields: [request_id], references: [id])
-  client     users            @relation("ClientChats", fields: [client_id], references: [id])
-  technician users            @relation("TechnicianChats", fields: [technician_id], references: [id])
+  request    service_requests    @relation(fields: [request_id], references: [id])
+  client     users               @relation("ClientChats", fields: [client_id], references: [id])
+  technician technician_profiles @relation("TechnicianChats", fields: [technician_id], references: [id])
   messages   chat_messages[]
 }
 

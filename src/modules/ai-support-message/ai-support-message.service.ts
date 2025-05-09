@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateAiSupportMessageDto } from './dto/create-ai-support-message.dto';
 import { UpdateAiSupportMessageDto } from './dto/update-ai-support-message.dto';
@@ -7,40 +11,63 @@ import { UpdateAiSupportMessageDto } from './dto/update-ai-support-message.dto';
 export class AiSupportMessageService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: CreateAiSupportMessageDto) {
+  async create(data: CreateAiSupportMessageDto, userId: number) {
+    const chat = await this.prisma.ai_support_chats.findUnique({
+      where: { id: data.chatId },
+    });
+
+    if (!chat) throw new NotFoundException('Chat not found');
+    if (chat.user_id !== userId)
+      throw new ForbiddenException('Access denied to this chat');
+
     return this.prisma.ai_support_messages.create({
       data: {
         chat_id: data.chatId,
-        role: data.role,
+        role: data.role, // "user" o "assistant"
         content: data.content,
-        status: data.status ?? 0,
+        status: typeof data.status === 'number' ? data.status : 0,
       },
     });
   }
 
-  findAll() {
+  async findAllForChat(chatId: number, userId: number) {
+    const chat = await this.prisma.ai_support_chats.findUnique({
+      where: { id: chatId },
+    });
+
+    if (!chat) throw new NotFoundException('Chat not found');
+    if (chat.user_id !== userId)
+      throw new ForbiddenException('Access denied to chat messages');
+
     return this.prisma.ai_support_messages.findMany({
-      include: {
-        chat: true,
-      },
+      where: { chat_id: chatId },
+      include: { chat: true },
       orderBy: { sent_at: 'asc' },
     });
   }
 
-  findOne(id: number) {
-    return this.prisma.ai_support_messages.findUnique({
+  async findOne(id: number, userId: number) {
+    const msg = await this.prisma.ai_support_messages.findUnique({
       where: { id },
-      include: {
-        chat: true,
-      },
+      include: { chat: true },
     });
+
+    if (!msg) throw new NotFoundException('Message not found');
+    if (msg.chat.user_id !== userId)
+      throw new ForbiddenException('Access denied to this message');
+
+    return msg;
   }
 
-  async update(id: number, data: UpdateAiSupportMessageDto) {
-    const message = await this.prisma.ai_support_messages.findUnique({
+  async update(id: number, data: UpdateAiSupportMessageDto, userId: number) {
+    const msg = await this.prisma.ai_support_messages.findUnique({
       where: { id },
+      include: { chat: true },
     });
-    if (!message) throw new NotFoundException('AI Support Message not found');
+
+    if (!msg) throw new NotFoundException('Message not found');
+    if (msg.chat.user_id !== userId)
+      throw new ForbiddenException('You can only update your own AI messages');
 
     return this.prisma.ai_support_messages.update({
       where: { id },
@@ -51,12 +78,18 @@ export class AiSupportMessageService {
     });
   }
 
-  async remove(id: number) {
-    const message = await this.prisma.ai_support_messages.findUnique({
+  async remove(id: number, userId: number) {
+    const msg = await this.prisma.ai_support_messages.findUnique({
+      where: { id },
+      include: { chat: true },
+    });
+
+    if (!msg) throw new NotFoundException('Message not found');
+    if (msg.chat.user_id !== userId)
+      throw new ForbiddenException('You can only delete your own AI messages');
+
+    return this.prisma.ai_support_messages.delete({
       where: { id },
     });
-    if (!message) throw new NotFoundException('AI Support Message not found');
-
-    return this.prisma.ai_support_messages.delete({ where: { id } });
   }
 }

@@ -7,9 +7,6 @@ export class CreateReviewDto {
   @IsInt()
   reviewerId: number;
 
-  @IsInt()
-  technicianId: number;
-
   @IsString()
   @IsOptional()
   comment?: string;

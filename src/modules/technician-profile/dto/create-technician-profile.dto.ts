@@ -10,6 +10,9 @@ export class CreateTechnicianProfileDto {
 
   @IsInt()
   @Min(0)
+  yearsExperience: number;
+
   @IsOptional()
-  yearsExperience?: number;
+  @IsInt()
+  status?: number;
 }

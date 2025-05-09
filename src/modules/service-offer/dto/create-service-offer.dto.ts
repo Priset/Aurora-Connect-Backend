@@ -4,9 +4,6 @@ export class CreateServiceOfferDto {
   @IsInt()
   requestId: number;
 
-  @IsInt()
-  technicianId: number;
-
   @IsString()
   @IsOptional()
   message?: string;

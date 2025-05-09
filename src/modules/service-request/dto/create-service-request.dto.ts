@@ -1,4 +1,4 @@
-import { IsInt, IsNumber, IsString, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateServiceRequestDto {
   @IsInt()
@@ -10,4 +10,8 @@ export class CreateServiceRequestDto {
   @IsNumber()
   @Min(0)
   offeredPrice: number;
+
+  @IsOptional()
+  @IsInt()
+  status?: number;
 }
