@@ -15,6 +15,7 @@ import { TechnicianProfileModule } from './modules/technician-profile/technician
 import { ConfigModule } from '@nestjs/config';
 import { ChatMessageModule } from './modules/chat-message/chat-message.module';
 import { AiSupportMessageModule } from './modules/ai-support-message/ai-support-message.module';
+import { ServicePublicModule } from './modules/service-public/service-public.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AiSupportMessageModule } from './modules/ai-support-message/ai-support-
     TechnicianProfileModule,
     ChatMessageModule,
     AiSupportMessageModule,
+    ServicePublicModule,
   ],
   controllers: [AppController],
   providers: [AppService],

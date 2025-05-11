@@ -34,7 +34,6 @@ export class ServiceRequestController {
   }
 
   @Get('all')
-  @UseGuards(JwtAuthGuard)
   findAllRequestsForTechnicians() {
     return this.service.findAllForTechnicians();
   }
