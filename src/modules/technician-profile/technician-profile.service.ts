@@ -44,7 +44,7 @@ export class TechnicianProfileService {
   async findOne(id: number, userId: number) {
     const profile = await this.prisma.technician_profiles.findUnique({
       where: { id },
-      include: { user: true },
+      include: { user: true, service_reviews: true },
     });
 
     if (!profile || (profile.status as Status) === Status.ELIMINADO)

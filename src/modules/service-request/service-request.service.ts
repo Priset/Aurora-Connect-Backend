@@ -72,6 +72,7 @@ export class ServiceRequestService {
             last_name: true,
           },
         },
+        serviceOffers: true,
       },
       orderBy: {
         created_at: 'desc',
@@ -207,6 +208,16 @@ export class ServiceRequestService {
 
       // Actualizar estado general del request
       await this.prisma.service_requests.update({
+        where: { id },
+        data: { status: Status.CHAT_ACTIVO },
+      });
+
+      await this.prisma.service_tickets.update({
+        where: { id },
+        data: { status: Status.CHAT_ACTIVO },
+      });
+
+      await this.prisma.service_offers.update({
         where: { id },
         data: { status: Status.CHAT_ACTIVO },
       });
