@@ -35,6 +35,9 @@ export class AuthService {
   async getUserByAuth0Id(auth0Id: string) {
     return this.prisma.users.findUnique({
       where: { auth0_id: auth0Id },
+      include: {
+        technicianProfile: true,
+      },
     });
   }
 }

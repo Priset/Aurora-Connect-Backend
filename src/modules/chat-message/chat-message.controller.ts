@@ -30,7 +30,8 @@ export class ChatMessageController {
 
   @Get()
   findAll(@Query('chatId') chatId: string, @AuthUserId() userId: number) {
-    return this.service.findAllForChat(+chatId, userId);
+    const parsed = Number(chatId);
+    return this.service.findAllForChat(parsed, userId);
   }
 
   @Get(':id')
