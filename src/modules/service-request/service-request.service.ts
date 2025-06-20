@@ -270,6 +270,68 @@ export class ServiceRequestService {
     return updatedRequest;
   }
 
+  async finalizeRequest(id: number, userId: number) {
+    const request = await this.prisma.service_requests.findUnique({
+      where: { id },
+      include: {
+        chat: true,
+        serviceOffers: true,
+        ticket: true,
+      },
+    });
+
+    if (!request) throw new NotFoundException('Request not found');
+    if (request.client_id !== userId) {
+      throw new ForbiddenException('Access denied to finalize this request');
+    }
+
+    const now = new Date();
+
+    await this.prisma.$transaction([
+      // Actualizar estado general
+      this.prisma.service_requests.update({
+        where: { id },
+        data: { status: Status.FINALIZADO },
+      }),
+      // Actualizar ticket (solo uno por request)
+      this.prisma.service_tickets.updateMany({
+        where: {
+          request_id: id,
+          NOT: { status: Status.ELIMINADO },
+        },
+        data: {
+          status: Status.FINALIZADO,
+          closed_at: now,
+        },
+      }),
+      // Actualizar ofertas asociadas
+      this.prisma.service_offers.updateMany({
+        where: {
+          request_id: id,
+          NOT: { status: Status.ELIMINADO },
+        },
+        data: { status: Status.FINALIZADO },
+      }),
+      // Actualizar chat asociado
+      this.prisma.chats.updateMany({
+        where: {
+          request_id: id,
+          NOT: { status: Status.ELIMINADO },
+        },
+        data: { status: Status.FINALIZADO },
+      }),
+    ]);
+
+    const updatedRequest = await this.prisma.service_requests.findUnique({
+      where: { id },
+      include: { client: true, serviceOffers: true, chat: true },
+    });
+
+    this.gateway.emitRequestUpdated(updatedRequest!);
+
+    return { message: 'Request finalized successfully' };
+  }
+
   async remove(id: number, userId: number) {
     const request = await this.prisma.service_requests.findUnique({
       where: { id },

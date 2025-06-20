@@ -27,7 +27,7 @@ export class TechnicianProfileService {
         user_id: userId,
         experience: data.experience,
         years_experience: data.yearsExperience,
-        status: data.status ?? 0,
+        status: data.status ?? Status.DESHABILITADO,
       },
     });
   }

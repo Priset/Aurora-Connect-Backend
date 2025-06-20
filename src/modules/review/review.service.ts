@@ -16,7 +16,7 @@ export class ReviewService {
 
   async create(data: CreateReviewDto, userId: number) {
     const request = await this.prisma.service_requests.findUnique({
-      where: { id: data.requestId },
+      where: { id: data.request_id },
       include: {
         chat: {
           include: {
@@ -31,17 +31,17 @@ export class ReviewService {
       throw new ForbiddenException('You can only review your own requests');
 
     const ticket = await this.prisma.service_tickets.findUnique({
-      where: { request_id: data.requestId },
+      where: { request_id: data.request_id },
     });
 
-    if (!ticket || ticket.status !== 2)
+    if (!ticket || (ticket.status as Status) !== Status.FINALIZADO)
       throw new BadRequestException(
         'You can only review after the service is completed',
       );
 
     const existingReview = await this.prisma.service_reviews.findFirst({
       where: {
-        request_id: data.requestId,
+        request_id: data.request_id,
         reviewer_id: userId,
       },
     });
@@ -54,16 +54,37 @@ export class ReviewService {
       throw new NotFoundException('No technician assigned to this request');
     }
 
-    return this.prisma.service_reviews.create({
+    const review = await this.prisma.service_reviews.create({
       data: {
-        request_id: data.requestId,
+        request_id: data.request_id,
         reviewer_id: userId,
         technician_id: technicianId,
         comment: data.comment,
         rating: data.rating,
-        status: data.status ?? 0,
+        status: data.status ?? Status.HABILITADO,
       },
     });
+
+    await Promise.all([
+      this.prisma.service_requests.update({
+        where: { id: data.request_id },
+        data: { status: Status.CALIFICADO },
+      }),
+      this.prisma.service_tickets.update({
+        where: { request_id: data.request_id },
+        data: { status: Status.CALIFICADO },
+      }),
+      this.prisma.service_offers.updateMany({
+        where: { request_id: data.request_id },
+        data: { status: Status.CALIFICADO },
+      }),
+      this.prisma.chats.updateMany({
+        where: { request_id: data.request_id },
+        data: { status: Status.CALIFICADO },
+      }),
+    ]);
+
+    return review;
   }
 
   async findAll() {
