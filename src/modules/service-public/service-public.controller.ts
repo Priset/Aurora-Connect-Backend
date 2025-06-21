@@ -5,6 +5,11 @@ import { ServicePublicService } from './service-public.service';
 export class ServicePublicController {
   constructor(private readonly service: ServicePublicService) {}
 
+  @Get('technician-profile')
+  getAllTechnicians() {
+    return this.service.getAllTechniciansPublic();
+  }
+
   @Get('technician-profile/:id')
   getTechnicianProfile(@Param('id', ParseIntPipe) id: number) {
     return this.service.getTechnicianProfilePublic(id);
