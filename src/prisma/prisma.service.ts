@@ -13,4 +13,18 @@ export class PrismaService
   async onModuleDestroy() {
     await this.$disconnect();
   }
+
+  enableShutdownHooks() {
+    process.on('SIGINT', () => {
+      this.$disconnect()
+        .then(() => console.log('🛑 Prisma disconnected on SIGINT'))
+        .catch((err) => console.error('❌ Error disconnecting Prisma', err));
+    });
+
+    process.on('SIGTERM', () => {
+      this.$disconnect()
+        .then(() => console.log('🛑 Prisma disconnected on SIGTERM'))
+        .catch((err) => console.error('❌ Error disconnecting Prisma', err));
+    });
+  }
 }

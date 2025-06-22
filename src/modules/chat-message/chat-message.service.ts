@@ -7,10 +7,14 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateChatMessageDto } from './dto/create-chat-message.dto';
 import { UpdateChatMessageDto } from './dto/update-chat-message.dto';
 import { Status } from '../../common/enums/status.enum';
+import { ChatGateway } from './chat-message.gateway';
 
 @Injectable()
 export class ChatMessageService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly gateway: ChatGateway,
+  ) {}
 
   async create(data: CreateChatMessageDto, userId: number) {
     const chat = await this.prisma.chats.findUnique({
@@ -18,13 +22,18 @@ export class ChatMessageService {
     });
 
     if (!chat) throw new NotFoundException('Chat not found');
+
+    const technicianProfile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
+    });
+
     const isParticipant =
-      chat.client_id === userId || chat.technician_id === userId;
+      chat.client_id === userId || chat.technician_id === technicianProfile?.id;
 
     if (!isParticipant)
       throw new ForbiddenException('You are not part of this chat');
 
-    return this.prisma.chat_messages.create({
+    const message = await this.prisma.chat_messages.create({
       data: {
         chat_id: data.chatId,
         sender_id: userId,
@@ -32,17 +41,33 @@ export class ChatMessageService {
         status:
           typeof data.status === 'number' ? data.status : Status.HABILITADO,
       },
+      include: {
+        sender: true,
+      },
     });
+
+    this.gateway.emitNewMessage(data.chatId, message);
+
+    return message;
   }
 
   async findAllForChat(chatId: number, userId: number) {
+    if (!chatId || isNaN(chatId)) {
+      throw new NotFoundException('Chat ID is invalid or missing');
+    }
+
     const chat = await this.prisma.chats.findUnique({
       where: { id: chatId },
     });
 
     if (!chat) throw new NotFoundException('Chat not found');
+
+    const technicianProfile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
+    });
+
     const isParticipant =
-      chat.client_id === userId || chat.technician_id === userId;
+      chat.client_id === userId || chat.technician_id === technicianProfile?.id;
 
     if (!isParticipant)
       throw new ForbiddenException('Access denied to chat messages');
@@ -68,10 +93,15 @@ export class ChatMessageService {
 
     if (!message || (message.status as Status) === Status.ELIMINADO)
       throw new NotFoundException('Message not found');
+
     const chat = message.chat;
 
+    const technicianProfile = await this.prisma.technician_profiles.findUnique({
+      where: { user_id: userId },
+    });
+
     const isParticipant =
-      chat.client_id === userId || chat.technician_id === userId;
+      chat.client_id === userId || chat.technician_id === technicianProfile?.id;
 
     if (!isParticipant)
       throw new ForbiddenException('Access denied to this message');

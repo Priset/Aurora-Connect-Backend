@@ -61,6 +61,11 @@ export class ServiceRequestController {
     return this.service.updateStatus(+id, dto.status, userId);
   }
 
+  @Patch(':id/finalize')
+  finalize(@Param('id') id: string, @AuthUserId() userId: number) {
+    return this.service.finalizeRequest(+id, userId);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string, @AuthUserId() userId: number) {
     return this.service.remove(+id, userId);

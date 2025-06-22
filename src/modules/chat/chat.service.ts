@@ -72,6 +72,10 @@ export class ChatService {
         technician: {
           include: { user: true },
         },
+        messages: {
+          orderBy: { sent_at: 'desc' },
+          take: 1,
+        },
       },
     });
   }

@@ -26,8 +26,8 @@ export class TechnicianProfileService {
       data: {
         user_id: userId,
         experience: data.experience,
-        years_experience: data.yearsExperience,
-        status: data.status ?? 0,
+        years_experience: data.years_experience,
+        status: data.status ?? Status.DESHABILITADO,
       },
     });
   }
@@ -68,7 +68,7 @@ export class TechnicianProfileService {
       where: { id },
       data: {
         experience: data.experience,
-        years_experience: data.yearsExperience,
+        years_experience: data.years_experience,
         status: data.status,
       },
     });

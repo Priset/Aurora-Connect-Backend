@@ -23,8 +23,8 @@ export class NotificationController {
   constructor(private readonly service: NotificationService) {}
 
   @Post()
-  create(@Body() dto: CreateNotificationDto, @AuthUserId() userId: number) {
-    return this.service.create(dto, userId);
+  create(@Body() dto: CreateNotificationDto) {
+    return this.service.create(dto);
   }
 
   @Get()
@@ -37,6 +37,11 @@ export class NotificationController {
     return this.service.findOne(+id, userId);
   }
 
+  @Patch('mark-all-as-read')
+  markAllAsRead(@AuthUserId() userId: number) {
+    return this.service.markAllAsRead(userId);
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: string,
@@ -44,6 +49,11 @@ export class NotificationController {
     @AuthUserId() userId: number,
   ) {
     return this.service.update(+id, dto, userId);
+  }
+
+  @Delete('clear-read')
+  clearRead(@AuthUserId() userId: number) {
+    return this.service.removeAllRead(userId);
   }
 
   @Delete(':id')
