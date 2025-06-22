@@ -14,6 +14,7 @@ export class ServicePublicService {
       include: {
         user: {
           select: {
+            id: true,
             name: true,
             last_name: true,
             email: true,
@@ -53,5 +54,33 @@ export class ServicePublicService {
     }
 
     return profile;
+  }
+
+  async getRequestPublicById(id: number) {
+    const request = await this.prisma.service_requests.findUnique({
+      where: { id },
+      include: {
+        client: {
+          select: {
+            name: true,
+            last_name: true,
+          },
+        },
+        serviceOffers: {
+          select: {
+            id: true,
+            technician_id: true,
+            proposed_price: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!request || (request.status as Status) === Status.ELIMINADO) {
+      throw new NotFoundException('Service request not found');
+    }
+
+    return request;
   }
 }

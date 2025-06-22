@@ -14,4 +14,9 @@ export class ServicePublicController {
   getTechnicianProfile(@Param('id', ParseIntPipe) id: number) {
     return this.service.getTechnicianProfilePublic(id);
   }
+
+  @Get('request/:id')
+  getRequestPublic(@Param('id', ParseIntPipe) id: number) {
+    return this.service.getRequestPublicById(id);
+  }
 }

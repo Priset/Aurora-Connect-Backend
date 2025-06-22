@@ -44,7 +44,18 @@ export class ServiceRequestService {
         client_id: userId,
         NOT: { status: Status.ELIMINADO },
       },
-      include: { client: true, serviceOffers: true },
+      include: {
+        client: true,
+        serviceOffers: {
+          include: {
+            technician: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -200,6 +211,13 @@ export class ServiceRequestService {
     if (offer?.id) {
       const refreshed = await this.prisma.service_offers.findUnique({
         where: { id: offer.id },
+        include: {
+          technician: {
+            include: {
+              user: true,
+            },
+          },
+        },
       });
 
       if (!refreshed) {
@@ -263,7 +281,19 @@ export class ServiceRequestService {
 
     const updatedRequest = await this.prisma.service_requests.findUnique({
       where: { id },
-      include: { client: true, serviceOffers: true, chat: true },
+      include: {
+        client: true,
+        chat: true,
+        serviceOffers: {
+          include: {
+            technician: {
+              include: {
+                user: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     this.gateway.emitRequestUpdated(updatedRequest!);
