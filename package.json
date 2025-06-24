@@ -28,6 +28,7 @@
     "@nestjs/platform-socket.io": "^11.1.0",
     "@nestjs/websockets": "^11.1.0",
     "@prisma/client": "^6.6.0",
+    "@vendia/serverless-express": "^4.12.6",
     "class-validator": "^0.14.1",
     "express-jwt": "^8.5.1",
     "express-oauth2-jwt-bearer": "^1.6.1",

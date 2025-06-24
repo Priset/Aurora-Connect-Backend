@@ -32,6 +32,9 @@ importers:
       '@prisma/client':
         specifier: ^6.6.0
         version: 6.6.0(prisma@6.6.0(typescript@5.8.3))(typescript@5.8.3)
+      '@vendia/serverless-express':
+        specifier: ^4.12.6
+        version: 4.12.6
       class-validator:
         specifier: ^0.14.1
         version: 0.14.1
@@ -332,6 +335,10 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@codegenie/serverless-express@4.16.0':
+    resolution: {integrity: sha512-TlvAHQysphN3OW6Ziz6AD2DnN9IIy/KkKNImZwMJpwGHHqLATi/9hMg8H8VBRg2L15pGt8ad3R6j6mfvHVWrCg==}
+    engines: {node: '>=18'}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -1397,6 +1404,10 @@ packages:
   '@typescript-eslint/visitor-keys@8.30.1':
     resolution: {integrity: sha512-aEhgas7aJ6vZnNFC7K4/vMGDGyOiqWcYZPpIWrTKuTAlsvDNKy2GFDqh9smL+iq069ZvR0YzEeq0B8NJlLzjFA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@vendia/serverless-express@4.12.6':
+    resolution: {integrity: sha512-ePsIPk3VQwgm5nh/JGBtTKQs5ZOF7REjHxC+PKk/CHvhlKQkJuUU365uPOlxuLJhC+BAefDznDRReWxpnKjmYg==}
+    engines: {node: '>=12'}
 
   '@vercel/build-utils@10.6.1':
     resolution: {integrity: sha512-E6O45bInBcKFDtliPADlNpIMutPjzGepYVfV2GyXdxf+00k6wMAlTQ/HbgWhvErOvy7TkZxFxrkRghAWnGK+UA==}
@@ -4407,6 +4418,8 @@ snapshots:
 
   '@bcoe/v8-coverage@0.2.3': {}
 
+  '@codegenie/serverless-express@4.16.0': {}
+
   '@colors/colors@1.5.0':
     optional: true
 
@@ -5542,6 +5555,10 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.30.1
       eslint-visitor-keys: 4.2.0
+
+  '@vendia/serverless-express@4.12.6':
+    dependencies:
+      '@codegenie/serverless-express': 4.16.0
 
   '@vercel/build-utils@10.6.1': {}
 
