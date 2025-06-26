@@ -8,6 +8,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTechnicianProfileDto } from './dto/create-technician-profile.dto';
 import { UpdateTechnicianProfileDto } from './dto/update-technician-profile.dto';
 import { Status } from '../../common/enums/status.enum';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class TechnicianProfileService {
@@ -61,8 +62,15 @@ export class TechnicianProfileService {
     });
 
     if (!profile) throw new NotFoundException('Technician profile not found');
-    if (profile.user_id !== userId)
-      throw new ForbiddenException('You can only update your own profile');
+
+    if (profile.user_id !== userId) {
+      const user = await this.prisma.users.findUnique({
+        where: { id: userId },
+      });
+      if (!user || user.role !== UserRole.admin) {
+        throw new ForbiddenException('You can only update your own profile');
+      }
+    }
 
     return this.prisma.technician_profiles.update({
       where: { id },
@@ -82,8 +90,14 @@ export class TechnicianProfileService {
     if (!profile || (profile.status as Status) === Status.ELIMINADO)
       throw new NotFoundException('Technician profile not found');
 
-    if (profile.user_id !== userId)
-      throw new ForbiddenException('You can only delete your own profile');
+    if (profile.user_id !== userId) {
+      const user = await this.prisma.users.findUnique({
+        where: { id: userId },
+      });
+      if (!user || user.role !== UserRole.admin) {
+        throw new ForbiddenException('You can only delete your own profile');
+      }
+    }
 
     return this.prisma.technician_profiles.update({
       where: { id },
