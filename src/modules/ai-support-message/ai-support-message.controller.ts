@@ -13,6 +13,7 @@ import {
 import { AiSupportMessageService } from './ai-support-message.service';
 import { CreateAiSupportMessageDto } from './dto/create-ai-support-message.dto';
 import { UpdateAiSupportMessageDto } from './dto/update-ai-support-message.dto';
+import { BadRequestException } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { AuthUserId } from 'src/common/decorators/auth-user-id.decorator';
 import { AuthUserInterceptor } from 'src/common/interceptors/auth-user.interceptor';
@@ -30,12 +31,24 @@ export class AiSupportMessageController {
 
   @Get()
   findAll(@Query('chatId') chatId: string, @AuthUserId() userId: number) {
-    return this.service.findAllForChat(+chatId, userId);
+    const parsedId = Number(chatId);
+    if (!parsedId || isNaN(parsedId)) {
+      throw new BadRequestException('Invalid chatId');
+    }
+    return this.service.findAllForChat(parsedId, userId);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string, @AuthUserId() userId: number) {
     return this.service.findOne(+id, userId);
+  }
+
+  @Post('ai')
+  async chatIA(
+    @Body() body: { chatId: number; prompt: string },
+    @AuthUserId() userId: number,
+  ) {
+    return this.service.chatWithAI(body.chatId, userId, body.prompt);
   }
 
   @Patch(':id')

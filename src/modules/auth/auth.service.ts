@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { Status } from 'src/common/enums/status.enum';
 
 interface Auth0Profile {
   name: string;
   last_name: string;
   email: string;
-  role?: 'client' | 'technician';
+  role?: 'client' | 'technician' | 'admin';
 }
 
 @Injectable()
@@ -25,6 +26,7 @@ export class AuthService {
           last_name: profile.last_name,
           email: profile.email,
           role: profile.role ?? 'client',
+          status: Status.HABILITADO,
         },
       });
     }

@@ -5,20 +5,19 @@ import {
   Patch,
   Param,
   Delete,
-  UseInterceptors,
   UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
 import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { AuthUserInterceptor } from '../../common/interceptors/auth-user.interceptor';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { AuthUser } from '../../common/decorators/auth-user.decorator';
-import { users } from '@prisma/client';
-import { AuthUserId } from '../../common/decorators/auth-user-id.decorator';
+import { users, UserRole } from '@prisma/client';
+import { AuthUserGuard } from '../auth/guards/auth-user.guard';
 
-@UseGuards(JwtAuthGuard)
-@UseInterceptors(AuthUserInterceptor)
+@UseGuards(JwtAuthGuard, AuthUserGuard, RolesGuard)
 @Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService) {}
@@ -29,29 +28,36 @@ export class UserController {
   }
 
   @Get()
+  @Roles(UserRole.admin)
   findAll() {
     return this.userService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @AuthUserId() userId: number) {
-    if (+id !== userId) throw new ForbiddenException('Access denied');
+  @Roles(UserRole.admin, UserRole.client, UserRole.technician)
+  findOne(@Param('id') id: string, @AuthUser() user: users) {
+    if (user.role !== 'admin' && user.id !== +id) {
+      throw new ForbiddenException('Access denied');
+    }
     return this.userService.findOne(+id);
   }
 
   @Patch(':id')
+  @Roles(UserRole.admin, UserRole.client, UserRole.technician)
   update(
     @Param('id') id: string,
     @Body() dto: UpdateUserDto,
-    @AuthUserId() userId: number,
+    @AuthUser() user: users,
   ) {
-    if (+id !== userId) throw new ForbiddenException('Access denied');
+    if (user.role !== 'admin' && user.id !== +id) {
+      throw new ForbiddenException('Access denied');
+    }
     return this.userService.update(+id, dto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @AuthUserId() userId: number) {
-    if (+id !== userId) throw new ForbiddenException('Access denied');
+  @Roles(UserRole.admin)
+  remove(@Param('id') id: string) {
     return this.userService.remove(+id);
   }
 }

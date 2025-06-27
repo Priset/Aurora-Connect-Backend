@@ -24,7 +24,7 @@ export class AuthController {
       name: string;
       last_name: string;
       email: string;
-      role: 'client' | 'technician';
+      role: 'client' | 'technician' | 'admin';
     },
   ) {
     const payload = req.auth?.payload;
