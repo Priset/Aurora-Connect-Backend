@@ -16,6 +16,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ChatMessageModule } from './modules/chat-message/chat-message.module';
 import { AiSupportMessageModule } from './modules/ai-support-message/ai-support-message.module';
 import { ServicePublicModule } from './modules/service-public/service-public.module';
+import { CohereModule } from './common/cohere/cohere.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { ServicePublicModule } from './modules/service-public/service-public.mod
       isGlobal: true,
     }),
     PrismaModule,
+    CohereModule,
     AuthModule,
     UserModule,
     ServiceRequestModule,
